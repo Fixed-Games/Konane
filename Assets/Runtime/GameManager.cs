@@ -16,6 +16,7 @@ public class GameManager : MonoBehaviour
         var game = ScriptableObject.CreateInstance<Game>();
         var gameJson = Resources.Load<TextAsset>("Game Settings")?.text;
         JsonUtility.FromJsonOverwrite(gameJson, game);
+        game.Init();
         return game;
     }
 

@@ -34,6 +34,23 @@ public class UIChecker : MonoBehaviour
         iconOneShotNotified = false;
     }
 
+    public void Clear(float deltaTime)
+    {
+        if (iconOneShotNotified)
+        {
+            Color color = iconFrame.color;
+            if (color.a > 0f)
+            {
+                color.a = Mathf.MoveTowards(color.a, 0f, deltaTime);
+                iconFrame.color = color;
+            }
+            else
+            {
+                iconOneShotNotified = false;
+            }
+        }
+    }
+
     public void Init(Color color)
     {
         button.interactable = true;
@@ -50,23 +67,6 @@ public class UIChecker : MonoBehaviour
             color.a = 1f;
             iconFrame.color = color;
             iconOneShotNotified = true;
-        }
-    }
-
-    public void Repaint(float deltaTime)
-    {
-        if (iconOneShotNotified)
-        {
-            Color color = iconFrame.color;
-            if (color.a > 0f)
-            {
-                color.a = Mathf.MoveTowards(color.a, 0f, deltaTime);
-                iconFrame.color = color;
-            }
-            else
-            {
-                iconOneShotNotified = false;
-            }
         }
     }
 

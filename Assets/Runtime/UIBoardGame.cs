@@ -4,17 +4,20 @@ using UnityEngine.UI;
 
 public class UIBoardGame : MonoBehaviour, ITriggable
 {
+    public const float FREQUENCY = 1f;
+    public const float T = 1f / FREQUENCY;
+
     [SerializeField] private Button board = null;
-    [SerializeField] private CanvasGroup boardGroup = null;
+    [SerializeField] private Button boardSelect = null;
+    [SerializeField] private CanvasGroup boardView = null;
     [SerializeField] private AspectRatioFitter gameRatioFitter = null;
     [SerializeField] private RectTransform originalRoot = null;
     [SerializeField] private GameObject originalUI = null;
-    [SerializeField] private Button select = null;
 
-    private int[] checkedTips = null;
     private Game game = null;
     private Dictionary<int, int> gameUI = null;
     private int selected = 0;
+    private int[] tips = null;
     private UIChecker[] uiCheckers = null;
     private float uiDeltaTime = 0f;
     private int uiRound = 0;
@@ -23,73 +26,78 @@ public class UIBoardGame : MonoBehaviour, ITriggable
     private void Awake()
     {
         board.onClick.AddListener(OnBoard);
-        boardGroup.interactable = false;
-        game = GameManager.StartGame();
-        game.Init();
-        gameUI = new Dictionary<int, int>(game.x * game.y);
-        select.onClick.AddListener(OnSelect);
+        boardSelect.onClick.AddListener(OnBoardSelect);
+        boardView.blocksRaycasts = false;
     }
 
     private void OnBoard()
     {
-        boardGroup.interactable = false;
         game.B();
-        for (int i = Game.NIL_OFFSET; i < uiCheckers.Length; ++i)
+        for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
         {
             uiCheckers[i].Clear();
         }
-        uiDeltaTime = 0.5f;
+        uiDeltaTime = T;
     }
 
-    private void OnBoardChecker(int id)
+    private void OnBoardChecker(int hashCode)
     {
-        boardGroup.interactable = false;
+        int id = gameUI[hashCode];
         game.Select(id, selected);
         game.A();
-        for (int i = Game.NIL_OFFSET; i < uiCheckers.Length; ++i)
+        for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
         {
             uiCheckers[i].Clear();
         }
-        uiDeltaTime = 0.5f;
+        uiDeltaTime = T * 0.8f;
     }
 
-    private void OnBoardUpdate()
+    private void OnBoardSelect()
     {
-        for (int i = Game.NIL_OFFSET; i < uiCheckers.Length; ++i)
+        if (game.TryGetPickedID(out int id))
         {
-            int value = game.GetCheckedValue(i, out bool asleep);
-            if (Game.IsActived(value))
+            for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
             {
-                if (Game.IsPicked(value))
-                {
-                    OnColor(i, Color.yellow);
-                }
-                if (asleep)
-                {
-                    uiCheckers[i].SleepWithCheck();
-                }
-                else
-                {
-                    uiCheckers[i].Check();
-                }
+                uiCheckers[i].Clear();
             }
-            else
+            OnBoardSelect(id, selected + 1);
+        }
+        else
+        {
+            if (tips != null)
             {
-                if (Game.IsPicked(value))
+                if (tips.Length != 0)
                 {
-                    OnColor(i, Color.white);
-                }
-                if (asleep)
-                {
-                    uiCheckers[i].Sleep();
+                    for (int i = 0; i < tips.Length; ++i)
+                    {
+                        uiCheckers[tips[i]].SetInfoWarning();
+                    }
                 }
                 else
                 {
-                    uiCheckers[i].CheckOff();
+                    GameManager.Quit();
                 }
             }
         }
-        boardGroup.interactable = true;
+    }
+
+    private void OnBoardSelect(int id, int index)
+    {
+        if (game.TryGetData(id, out int[][] data))
+        {
+            selected = index < data.Length ? index : 0;
+            for (int i = 0; i < data[selected].Length; ++i)
+            {
+                int point = data[selected][i];
+                uiCheckers[point].SetInfo(Color.yellow);
+                uiCheckers[point].Repaint();
+            }
+        }
+        else
+        {
+            game.B();
+            uiCheckers[id].SetInfoError();
+        }
     }
 
     private void OnColor(int id, Color color)
@@ -104,59 +112,69 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         gameUI = null;
     }
 
-    private void OnGameOver()
+    private void OnGame()
     {
-        Debug.LogWarningFormat("PLAYER_{0} FAILED", game.GetRoundGroup());
-    }
-
-    private void OnSelect()
-    {
-        int picked = game.GetPickedID();
-        if (picked != Game.NIL)
+        for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
         {
-            if (game.TryGetSearch(picked, out int[][] results))
+            int value = game.GetCheckedValue(i);
+            if (Game.Asleep(value))
             {
-                for (int i = Game.NIL_OFFSET; i < uiCheckers.Length; ++i)
+                if (Game.IsActived(value))
                 {
-                    uiCheckers[i].Clear();
+                    if (Game.IsPicked(value))
+                    {
+                        uiCheckers[i].Check();
+                    }
+                    else
+                    {
+                        uiCheckers[i].SleepWithCheck();
+                    }
                 }
-                selected = (selected + 1) % results.Length;
-                for (int i = 2; i < results[selected].Length; ++i)
+                else
                 {
-                    OnColor(results[selected][i], Color.white);
-                }
-                OnColor(results[selected][1], Color.yellow);
-                if (results[selected].Length > 2)
-                    OnColor(results[selected][2], Color.yellow);
-                uiDeltaTime = 1f;
-            }
-        }
-        else
-        {
-            if (checkedTips.Length != 0)
-            {
-                for (int i = 0; i < checkedTips.Length; ++i)
-                {
-                    uiCheckers[checkedTips[i]].SetInfoWarning();
+                    if (Game.IsPicked(value))
+                    {
+                        uiCheckers[i].CheckOff();
+                    }
+                    else
+                    {
+                        uiCheckers[i].Sleep();
+                    }
                 }
             }
             else
             {
-                GameManager.Quit();
+                if (Game.IsActived(value))
+                {
+                    uiCheckers[i].Check();
+                }
+                else
+                {
+                    uiCheckers[i].CheckOff();
+                }
             }
+            uiCheckers[i].Repaint();
         }
+    }
+
+    private void OnGameUpdate(float deltaTime)
+    {
+        for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
+        {
+            uiCheckers[i].Clear(deltaTime);
+        }
+    }
+
+    private void OnGameOver()
+    {
+        Debug.LogWarningFormat("PLAYER_{0} FAILED", game.GetRoundColor());
     }
 
     private void OnRound()
     {
-        checkedTips = game.Refresh();
-        if (checkedTips == null)
+        if (game.TryRefresh(out tips))
         {
-            checkedTips = new int[0];
-        }
-        else
-        {
-            if (checkedTips.Length == 0)
+            if (tips.Length == 0)
             {
                 OnGameOver();
             }
@@ -165,8 +183,11 @@ public class UIBoardGame : MonoBehaviour, ITriggable
 
     private void Start()
     {
+        game = GameManager.StartGame();
+        game.Init();
         gameRatioFitter.aspectRatio = (float)game.x / game.y;
         gameRatioFitter.enabled = true;
+        gameUI = new Dictionary<int, int>(game.x * game.y);
         float[] xMaps = new float[game.x + 1];
         float[] yMaps = new float[game.y + 1];
         for (int i = 1; i < xMaps.Length; ++i)
@@ -177,12 +198,12 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         {
             yMaps[i] = 1f - (float)i / game.y;
         }
-        uiCheckers = new UIChecker[Game.NIL_OFFSET + game.x * game.y];
+        uiCheckers = new UIChecker[Game.OFFSET + game.x * game.y];
         for (int i = 0; i < game.y; ++i)
         {
             for (int j = 0; j < game.x; ++j)
             {
-                var group = game.GetGroup(j, i);
+                var color = game.GetColor(j, i);
                 var id = game.GetID(j, i);
                 var target = Object.Instantiate<GameObject>(originalUI, originalRoot, false);
                 var targetRect = target.GetComponent<RectTransform>();
@@ -190,16 +211,17 @@ public class UIBoardGame : MonoBehaviour, ITriggable
                 targetRect.anchorMax = new Vector2(xMaps[j + 1], yMaps[i]);
                 uiCheckers[id] = target.GetComponent<UIChecker>();
                 uiCheckers[id].context = this;
-                uiCheckers[id].Init(group == 0 ? Color.black : Color.white);
+                uiCheckers[id].Init(color == 0 ? Color.black : Color.white);
                 gameUI[uiCheckers[id].GetHashCode()] = id;
             }
         }
+        uiRound = game.round;
+        uiRoundTime = 0f;
         OnRound();
     }
 
     private void Update()
     {
-        const float frequency = 1f;
         float deltaTime = Time.deltaTime;
         uiDeltaTime += deltaTime;
         uiRoundTime += deltaTime;
@@ -209,47 +231,30 @@ public class UIBoardGame : MonoBehaviour, ITriggable
             uiRoundTime = 0f;
             OnRound();
         }
-        if (uiDeltaTime > frequency)
+        if (uiDeltaTime > T && game.interactable)
         {
-            uiDeltaTime = 0f;
-            OnBoardUpdate();
-            for (int i = Game.NIL_OFFSET; i < uiCheckers.Length; ++i)
+            if (boardView.blocksRaycasts == false)
             {
-                uiCheckers[i].Repaint();
+                boardView.blocksRaycasts = true;
+                boardView.interactable = true;
+                if (game.TryGetPickedID(out int id))
+                {
+                    OnBoardSelect(id, 0);
+                }
             }
+            uiDeltaTime = 0f;
+            OnGame();
         }
         else
         {
-            for (int i = Game.NIL_OFFSET; i < uiCheckers.Length; ++i)
-            {
-                uiCheckers[i].Repaint(deltaTime);
-            }
+            OnGameUpdate(deltaTime);
         }
     }
 
     void ITriggable.Trigger(int hashCode)
     {
-        int id = gameUI[hashCode];
-        OnBoardChecker(id);
-        int picked = game.GetPickedID();
-        if (picked != Game.NIL)
-        {
-            if (game.TryGetSearch(picked, out int[][] results))
-            {
-                for (int i = 2; i < results[0].Length; ++i)
-                {
-                    OnColor(results[0][i], Color.white);
-                }
-                OnColor(results[0][1], Color.yellow);
-                if (results[0].Length > 2)
-                    OnColor(results[0][2], Color.yellow);
-                selected = 0;
-            }
-            else
-            {
-                game.B();
-                uiCheckers[picked].SetInfoError();
-            }
-        }
+        boardView.blocksRaycasts = false;
+        boardView.interactable = false;
+        OnBoardChecker(hashCode);
     }
 }

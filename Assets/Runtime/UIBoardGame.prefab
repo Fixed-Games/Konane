@@ -261,12 +261,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   board: {fileID: 3362105553889553388}
-  boardGroup: {fileID: 3362105553889553385}
+  boardSelect: {fileID: 3362105555229389361}
+  boardView: {fileID: 3362105553889553385}
   gameRatioFitter: {fileID: 3362105554484289826}
   originalRoot: {fileID: 3362105555279690744}
   originalUI: {fileID: 211134037234923933, guid: f87a07c8722f1467ea4c8decf9f8b161,
     type: 3}
-  select: {fileID: 3362105555229389361}
 --- !u!1 &3362105554484289828
 GameObject:
   m_ObjectHideFlags: 0

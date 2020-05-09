@@ -3,33 +3,39 @@ using UnityEngine;
 
 public class Game : ScriptableObject, System.IDisposable
 {
-    public const int NIL = 0;
-    public const int NIL_OFFSET = Konane.BoardGame.MAP_ID_OFFSET;
+    public const int OFFSET = Konane.BoardGame.MAP_ID_OFFSET;
 
+    public bool interactable { get { return true; } }
     public int round { get { return gameRound; } }
-    public int x { get { return gamePlay.x; } }
-    public int y { get { return gamePlay.y; } }
+    public int x { get { return dimensions[0]; } }
+    public int y { get { return dimensions[1]; } }
 
+    public bool classic = false;
     public bool customized = false;
     public int[] customs = null;
     public int[] dimensions = null;
 
     private bool changed = false;
+    private Dictionary<int, int[][]> database = null;
     private Konane.BoardGame gamePlay = null;
     private int gameRound = 0;
-    private int gameRoundStep = 0;
-    private Dictionary<int, int[][]> gameSearch = null;
-    private int id = NIL;
-    private int selected = 0;
+    private int gameSubRound = 0;
+    private int id = 0;
+    private int index = 0;
 
-    public static bool IsActived(int value)
+    public static bool Asleep(int value)
     {
         return (value & 1) != 0;
     }
 
-    public static bool IsPicked(int value)
+    public static bool IsActived(int value)
     {
         return (value & 2) != 0;
+    }
+
+    public static bool IsPicked(int value)
+    {
+        return (value & 4) != 0;
     }
 
     public void A()
@@ -43,11 +49,12 @@ public class Game : ScriptableObject, System.IDisposable
                 gameRound++;
                 break;
             default:
-                switch (gameRoundStep)
+                switch (gameSubRound)
                 {
                     case 0:
                         gamePlay.Pick(id);
-                        gameRoundStep = 1;
+                        gameSubRound = 1;
+                        database[id] = gamePlay.Check(id);
                         break;
                     case 1:
                     case 2:
@@ -55,19 +62,17 @@ public class Game : ScriptableObject, System.IDisposable
                         if (picked == id)
                         {
                             gamePlay.CancelPickedTarget();
-                            gameRoundStep = 0;
+                            gameSubRound = 0;
                         }
-                        else if (TryGetSearch(picked, out int[][] results))
+                        else if (TryGetData(picked, out int[][] data))
                         {
-                            int[] result = results[selected];
-                            for (int i = 0; i < result.Length; ++i)
+                            for (int i = 0; i < data[index].Length; ++i)
                             {
-                                if (result[i] == id)
+                                if (data[index][i] == id)
                                 {
                                     changed = true;
-                                    gamePlay.Move(result, i);
-                                    gameRoundStep = 2;
-                                    gameSearch[id] = gamePlay.Check(id);
+                                    database[id] = gamePlay.Move(data[index], i);
+                                    gameSubRound = 2;
                                     break;
                                 }
                             }
@@ -76,7 +81,7 @@ public class Game : ScriptableObject, System.IDisposable
                 }
                 break;
         }
-        id = NIL;
+        id = 0;
     }
 
     public void B()
@@ -87,23 +92,32 @@ public class Game : ScriptableObject, System.IDisposable
             case 1:
                 break;
             default:
-                switch (gameRoundStep)
+                switch (gameSubRound)
                 {
                     case 0:
                         break;
                     case 1:
                         gamePlay.CancelPickedTarget();
-                        gameRoundStep = 0;
+                        gameSubRound = 0;
                         break;
                     case 2:
                         changed = true;
                         gamePlay.CancelPickedTarget();
                         gameRound++;
-                        gameRoundStep = 0;
+                        gameSubRound = 0;
                         break;
                 }
                 break;
         }
+    }
+
+    public Konane.BoardGame Create()
+    {
+        if (classic)
+        {
+            return new KonaneClassic();
+        }
+        return new KonaneNightmare();
     }
 
     public void Dispose()
@@ -111,71 +125,94 @@ public class Game : ScriptableObject, System.IDisposable
         Object.Destroy(this);
     }
 
-    public int GetCheckedValue(int id, out bool asleep)
+    public int GetCheckedValue(int id)
     {
-        asleep = gamePlay.GetChecker(id).zZ;
         int value = 0;
-        switch (gameRound)
+        if (gamePlay.GetChecker(id).zZ)
         {
-            case 0:
-            case 1:
-                if (asleep == false && gamePlay.GetGroup(id) == gameRound)
-                {
-                    if (customized)
+            switch (gameRound)
+            {
+                case 0:
+                case 1:
+                    value = 1;
+                    break;
+                default:
+                    switch (gameSubRound)
                     {
-                        for (int i = 0; i < customs.Length; ++i)
-                        {
-                            if (id == customs[i])
+                        case 0:
+                            value = 1;
+                            break;
+                        case 1:
+                            if (gamePlay.picked == id)
                             {
-                                value = 1;
-                                break;
+                                value = 1 | 2 | 4;
+                            }
+                            else
+                            {
+                                value = 1 | 2;
+                            }
+                            break;
+                        case 2:
+                            if (gamePlay.picked == id)
+                            {
+                                value = 1 | 4;
+                            }
+                            else
+                            {
+                                value = 1 | 2;
+                            }
+                            break;
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            switch (gameRound)
+            {
+                case 0:
+                case 1:
+                    if (gamePlay.GetColor(id) == gameRound)
+                    {
+                        if (customized)
+                        {
+                            for (int i = 0; i < customs.Length; ++i)
+                            {
+                                if (id == customs[i])
+                                {
+                                    value = 2;
+                                    break;
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        value = 1;
-                    }
-                }
-                break;
-            default:
-                switch (gameRoundStep)
-                {
-                    case 0:
-                        if (asleep == false && gamePlay.GetGroup(id) == GetRoundGroup())
-                        {
-                            value = 1;
-                        }
-                        break;
-                    case 1:
-                        if (asleep)
-                        {
-                            value = 1;
-                        }
-                        else if (gamePlay.picked == id)
-                        {
-                            value = 1 | 2;
-                        }
-                        break;
-                    case 2:
-                        if (asleep)
-                        {
-                            value = 1;
-                        }
-                        else if (gamePlay.picked == id)
+                        else
                         {
                             value = 2;
                         }
-                        break;
-                }
-                break;
+                    }
+                    break;
+                default:
+                    switch (gameSubRound)
+                    {
+                        case 0:
+                            if (gamePlay.GetColor(id) == GetRoundColor())
+                            {
+                                value = 2;
+                            }
+                            break;
+                        case 1:
+                        case 2:
+                            break;
+                    }
+                    break;
+            }
         }
         return value;
     }
 
-    public int GetGroup(int x, int y)
+    public int GetColor(int x, int y)
     {
-        return gamePlay.GetGroup(x, y);
+        return gamePlay.GetColor(x, y);
     }
 
     public int GetID(int x, int y)
@@ -183,25 +220,23 @@ public class Game : ScriptableObject, System.IDisposable
         return gamePlay.GetChecker(x, y).id;
     }
 
-    public int GetPickedID()
-    {
-        return gamePlay.picked;
-    }
-
-    public int GetRoundGroup()
+    public int GetRoundColor()
     {
         return gameRound & 1;
     }
 
     public void Init()
     {
-        gamePlay = new Konane.BoardGame(dimensions[0], dimensions[1]);
+        int x = dimensions[0];
+        int y = dimensions[1];
+        database = new Dictionary<int, int[][]>(x * y);
+        gamePlay = Create();
+        gamePlay.Init(x, y);
         gameRound = 0;
-        gameRoundStep = 0;
-        gameSearch = new Dictionary<int, int[][]>(gamePlay.x * gamePlay.y);
+        gameSubRound = 0;
     }
 
-    public int[] Refresh()
+    public bool TryRefresh(out int[] tips)
     {
         if (gameRound != 0 && gameRound != 1)
         {
@@ -215,19 +250,19 @@ public class Game : ScriptableObject, System.IDisposable
                         var checker = gamePlay.GetChecker(j, i);
                         if (checker.zZ)
                         {
-                            gameSearch.Remove(checker.id);
+                            database.Remove(checker.id);
                         }
                         else
                         {
-                            gameSearch[checker.id] = gamePlay.Check(j, i);
+                            database[checker.id] = gamePlay.Check(j, i);
                         }
                     }
                 }
             }
             List<int> dataList = new List<int>();
-            foreach (var data in gameSearch)
+            foreach (var data in database)
             {
-                if (gamePlay.GetGroup(data.Key) == GetRoundGroup())
+                if (gamePlay.GetColor(data.Key) == GetRoundColor())
                 {
                     if (data.Value.Length != 0)
                     {
@@ -235,31 +270,33 @@ public class Game : ScriptableObject, System.IDisposable
                     }
                 }
             }
-            return dataList.ToArray();
+            tips = dataList.ToArray();
+            return true;
         }
-        return null;
+        tips = null;
+        return false;
     }
 
-    public void Select(int id, int selected)
+    public void Select(int id, int index)
     {
         this.id = id;
-        this.selected = selected;
+        this.index = index;
     }
 
-    public bool TryGetSearch(int id, out int[][] results)
+    public bool TryGetData(int id, out int[][] data)
     {
-        return gameSearch.TryGetValue(id, out results) && results.Length != 0;
+        return database.TryGetValue(id, out data) && data.Length != 0;
     }
 
-    public int[][] UpdateSearch(int id)
+    public bool TryGetPickedID(out int id)
     {
-        gameSearch[id] = gamePlay.Check(id);
-        return gameSearch[id];
+        id = gamePlay.picked;
+        return id != 0;
     }
 
     private void OnDestroy()
     {
+        database = null;
         gamePlay = null;
-        gameSearch = null;
     }
 }

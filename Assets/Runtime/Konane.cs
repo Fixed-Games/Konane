@@ -1,7 +1,7 @@
 ﻿
 public static class Konane
 {
-    public class BoardGame
+    public abstract class BoardGame
     {
         public interface ICheckable
         {
@@ -15,6 +15,7 @@ public static class Konane
 
         public const int MAP_ID_OFFSET = 1;
         public const int MAP_OFFSET = 1;
+        public const int NON_PICKED = MAP_ID_OFFSET - 1;
 
         public int picked { get; private set; }
 
@@ -24,7 +25,48 @@ public static class Konane
         public int x = 0;
         public int y = 0;
 
-        public BoardGame(int x, int y)
+        public int CancelPickedTarget()
+        {
+            int picekd = this.picked;
+            if (picked != NON_PICKED)
+            {
+                OnPut(picked);
+                this.picked = NON_PICKED;
+            }
+            return picked;
+        }
+
+        public int[][] Check(int id)
+        {
+            return CheckOut(points[id].x, points[id].y, null, out _);
+        }
+
+        public int[][] Check(int x, int y)
+        {
+            return Check(checkers[y][x].id);
+        }
+
+        public ICheckable GetChecker(int id)
+        {
+            return checkedMaps[points[id].y][points[id].x];
+        }
+
+        public ICheckable GetChecker(int x, int y)
+        {
+            return checkers[y][x];
+        }
+
+        public int GetColor(int id)
+        {
+            return points[id].color;
+        }
+
+        public int GetColor(int x, int y)
+        {
+            return GetColor(checkers[y][x].id);
+        }
+
+        public void Init(int x, int y)
         {
             NilChecker nil = new NilChecker();
             int xMap = x + (MAP_OFFSET << 1);
@@ -54,7 +96,7 @@ public static class Konane
                     int jOffset = j + MAP_OFFSET;
                     checkers[i][j] = checker;
                     checkedMaps[iOffset][jOffset] = checker;
-                    points[id].group = (i & 1) == (j & 1) ? 0 : 1;
+                    points[id].color = (i & 1) == (j & 1) ? 0 : 1;
                     points[id].x = jOffset;
                     points[id].y = iOffset;
                 }
@@ -63,47 +105,11 @@ public static class Konane
             this.y = y;
         }
 
-        public void CancelPickedTarget()
-        {
-            picked = 0;
-        }
-
-        public int[][] Check(int id)
-        {
-            return ToMove(points[id].x, points[id].y, new int[] { id });
-        }
-
-        public int[][] Check(int x, int y)
-        {
-            return Check(checkers[y][x].id);
-        }
-
-        public ICheckable GetChecker(int id)
-        {
-            return checkedMaps[points[id].y][points[id].x];
-        }
-
-        public ICheckable GetChecker(int x, int y)
-        {
-            return checkers[y][x];
-        }
-
-        public int GetGroup(int id)
-        {
-            return points[id].group;
-        }
-
-        public int GetGroup(int x, int y)
-        {
-            return points[checkers[y][x].id].group;
-        }
-
-        public void Move(int[] checks, int checkIndex)
+        public int[][] Move(int[] checks, int checkIndex)
         {
             int id = checks[0];
             if (id == picked)
             {
-                TakeAway(id);
                 for (int i = 1; i < checks.Length; ++i)
                 {
                     TakeAway((id + checks[i]) >> 1);
@@ -113,19 +119,30 @@ public static class Konane
                         break;
                     }
                 }
-                TakeIn(id);
                 picked = id;
+                if (checks.Length > checkIndex + 1)
+                {
+                    int[] checkNews = new int[checks.Length - checkIndex];
+                    for (int i = 0; i < checkNews.Length; ++i)
+                    {
+                        checkNews[i] = checks[checkIndex + i];
+                    }
+                    return new int[][] { checkNews };
+                }
+                return new int[0][];
             }
+            return null;
         }
 
         public void Pick(int id)
         {
+            OnPickUp(id);
             picked = id;
         }
 
         public void Pick(int x, int y)
         {
-            picked = checkers[y][x].id;
+            Pick(checkers[y][x].id);
         }
 
         public void TakeAway(int id)
@@ -169,53 +186,27 @@ public static class Konane
             TakeIn(checkers[y][x].id);
         }
 
-        private int[][] ToJumpBack(int xMap, int yMap, int[] cache)
+        protected int[] CheckIn(int xMap, int yMap, int[] cache)
         {
-            ICheckable checker = checkedMaps[yMap][xMap];
-            if (TryJump(checker, checker.isBack, cache))
+            int id = checkedMaps[yMap][xMap].id;
+            if (cache == null)
             {
-                return ToMoveByJump(xMap, yMap - 1, cache);
+                return new int[] { id };
             }
-            return null;
+            int[] cacheNew = new int[cache.Length + 1];
+            cacheNew[cache.Length] = id;
+            cache.CopyTo(cacheNew, 0);
+            return cacheNew;
         }
 
-        private int[][] ToJumpForward(int xMap, int yMap, int[] cache)
+        protected int[][] CheckOut(int xMap, int yMap, int[] cache, out int[] jumpCache)
         {
-            ICheckable checker = checkedMaps[yMap][xMap];
-            if (TryJump(checker, checker.isForward, cache))
-            {
-                return ToMoveByJump(xMap, yMap + 1, cache);
-            }
-            return null;
-        }
-
-        private int[][] ToJumpLeft(int xMap, int yMap, int[] cache)
-        {
-            ICheckable checker = checkedMaps[yMap][xMap];
-            if (TryJump(checker, checker.isLeft, cache))
-            {
-                return ToMoveByJump(xMap - 1, yMap, cache);
-            }
-            return null;
-        }
-
-        private int[][] ToJumpRight(int xMap, int yMap, int[] cache)
-        {
-            ICheckable checker = checkedMaps[yMap][xMap];
-            if (TryJump(checker, checker.isRight, cache))
-            {
-                return ToMoveByJump(xMap + 1, yMap, cache);
-            }
-            return null;
-        }
-
-        private int[][] ToMove(int xMap, int yMap, int[] cache)
-        {
+            jumpCache = CheckIn(xMap, yMap, cache);
             int[][][] jumpTree = new int[][][] {
-                ToJumpBack(xMap, yMap - 1, cache),
-                ToJumpForward(xMap, yMap + 1, cache),
-                ToJumpLeft(xMap - 1, yMap, cache),
-                ToJumpRight(xMap + 1, yMap, cache)
+                ToJumpBack(xMap, yMap - 1, jumpCache),
+                ToJumpForward(xMap, yMap + 1, jumpCache),
+                ToJumpLeft(xMap - 1, yMap, jumpCache),
+                ToJumpRight(xMap + 1, yMap, jumpCache)
             };
             int[][] jumpResults = new int[0][];
             for (int i = 0; i < jumpTree.Length; ++i)
@@ -228,42 +219,23 @@ public static class Konane
                     jumpResults = jumpNewResults;
                 }
             }
-            if (jumpResults.Length == 0 && cache.Length > 1)
-            {
-                jumpResults = new int[][] { cache };
-            }
             return jumpResults;
         }
 
-        private int[][] ToMoveByJump(int xMap, int yMap, int[] cache)
+        protected virtual void OnPickUp(int id)
         {
-            int[] cacheAppend = new int[cache.Length + 1];
-            cacheAppend[cache.Length] = checkedMaps[yMap][xMap].id;
-            cache.CopyTo(cacheAppend, 0);
-            return ToMove(xMap, yMap, cacheAppend);
+            TakeAway(id);
         }
 
-        private bool TryJump(ICheckable checker, bool @checked, int[] cache)
+        protected virtual void OnPut(int id)
         {
-            if (checker.zZ)
-            {
-                return false;
-            }
-            if (@checked)
-            {
-                int cached = cache[0];
-                for (int i = 1; i < cache.Length; ++i)
-                {
-                    if (checker.id == ((cached + cache[i]) >> 1))
-                    {
-                        return false;
-                    }
-                    cached = cache[i];
-                }
-                return true;
-            }
-            return false;
+            TakeIn(id);
         }
+
+        protected abstract int[][] ToJumpBack(int xMap, int yMap, int[] cache);
+        protected abstract int[][] ToJumpForward(int xMap, int yMap, int[] cache);
+        protected abstract int[][] ToJumpLeft(int xMap, int yMap, int[] cache);
+        protected abstract int[][] ToJumpRight(int xMap, int yMap, int[] cache);
     }
 
     public class Checker : BoardGame.ICheckable
@@ -328,13 +300,13 @@ public static class Konane
     {
         public static readonly Point NaN = new Point(-1, -1);
 
-        public int group;
+        public int color;
         public int x;
         public int y;
 
         public Point(int x, int y)
         {
-            this.group = -1;
+            this.color = -1;
             this.x = x;
             this.y = y;
         }
