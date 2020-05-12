@@ -5,7 +5,7 @@ public class Game : ScriptableObject, System.IDisposable
 {
     public const int OFFSET = Konane.BoardGame.MAP_ID_OFFSET;
 
-    public bool interactable { get { return true; } }
+    public bool interactable { get; set; }
     public int round { get { return gameRound; } }
     public int x { get { return dimensions[0]; } }
     public int y { get { return dimensions[1]; } }
@@ -101,7 +101,6 @@ public class Game : ScriptableObject, System.IDisposable
                         gameSubRound = 0;
                         break;
                     case 2:
-                        changed = true;
                         gamePlay.CancelPickedTarget();
                         gameRound++;
                         gameSubRound = 0;
@@ -291,7 +290,7 @@ public class Game : ScriptableObject, System.IDisposable
     public bool TryGetPickedID(out int id)
     {
         id = gamePlay.picked;
-        return id != 0;
+        return id != Konane.BoardGame.NON_PICKED;
     }
 
     private void OnDestroy()

@@ -101,6 +101,7 @@ public static class Konane
                     points[id].y = iOffset;
                 }
             }
+            this.picked = NON_PICKED;
             this.x = x;
             this.y = y;
         }
@@ -136,6 +137,7 @@ public static class Konane
 
         public void Pick(int id)
         {
+            CancelPickedTarget();
             OnPickUp(id);
             picked = id;
         }

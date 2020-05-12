@@ -97,12 +97,8 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         {
             game.B();
             uiCheckers[id].SetInfoError();
+            uiDeltaTime = T;
         }
-    }
-
-    private void OnColor(int id, Color color)
-    {
-        uiCheckers[id].SetInfo(color);
     }
 
     private void OnDestroy()
@@ -157,6 +153,11 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         }
     }
 
+    private void OnGameOver()
+    {
+        Debug.LogWarningFormat("PLAYER_{0} FAILED", game.GetRoundColor());
+    }
+
     private void OnGameUpdate(float deltaTime)
     {
         for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
@@ -165,17 +166,23 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         }
     }
 
-    private void OnGameOver()
-    {
-        Debug.LogWarningFormat("PLAYER_{0} FAILED", game.GetRoundColor());
-    }
-
     private void OnRound()
     {
         if (game.TryRefresh(out tips))
         {
             if (tips.Length == 0)
             {
+                boardView.blocksRaycasts = false;
+                boardView.interactable = false;
+                game.interactable = false;
+                for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
+                {
+                    int value = game.GetCheckedValue(i);
+                    if (Game.IsActived(value))
+                    {
+                        uiCheckers[i].SetInfo(Color.red);
+                    }
+                }
                 OnGameOver();
             }
         }
@@ -185,6 +192,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
     {
         game = GameManager.StartGame();
         game.Init();
+        game.interactable = true;
         gameRatioFitter.aspectRatio = (float)game.x / game.y;
         gameRatioFitter.enabled = true;
         gameUI = new Dictionary<int, int>(game.x * game.y);
@@ -231,19 +239,22 @@ public class UIBoardGame : MonoBehaviour, ITriggable
             uiRoundTime = 0f;
             OnRound();
         }
-        if (uiDeltaTime > T && game.interactable)
+        if (uiDeltaTime > T)
         {
-            if (boardView.blocksRaycasts == false)
-            {
-                boardView.blocksRaycasts = true;
-                boardView.interactable = true;
-                if (game.TryGetPickedID(out int id))
-                {
-                    OnBoardSelect(id, 0);
-                }
-            }
             uiDeltaTime = 0f;
             OnGame();
+            if (game.interactable)
+            {
+                if (boardView.blocksRaycasts == false)
+                {
+                    boardView.blocksRaycasts = true;
+                    boardView.interactable = true;
+                    if (game.TryGetPickedID(out int id))
+                    {
+                        OnBoardSelect(id, 0);
+                    }
+                }
+            }
         }
         else
         {
