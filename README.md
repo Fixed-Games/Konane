@@ -2,7 +2,7 @@
 
 > 遊戲操作
 
-![](Preview.png)
+![](Bin/screenshot.png)
 
 - A
   - 「拿走」黑棋/白棋
@@ -18,8 +18,8 @@
 
 > 遊戲設定
 
-- Assets/Resources/Game Settings.json
-  - classic (是否為基礎規則)
+- Assets/Resources/*.json
+  - classic (是否是經典規則)
   - customized (是否指定預設拿走的棋子位置)
-  - customs  (預設拿走的棋子位置)
+  - customs (預設拿走的棋子位置)
   - dimensions (棋盤大小)
