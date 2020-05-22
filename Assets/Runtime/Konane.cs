@@ -66,7 +66,7 @@ public static class Konane
             return GetColor(checkers[y][x].id);
         }
 
-        public void Init(int x, int y)
+        public void Init(int x, int y, string file = null)
         {
             NilChecker nil = new NilChecker();
             int xMap = x + (MAP_OFFSET << 1);
@@ -101,9 +101,36 @@ public static class Konane
                     points[id].y = iOffset;
                 }
             }
-            this.picked = NON_PICKED;
-            this.x = x;
-            this.y = y;
+            try
+            {
+                if (file != null)
+                {
+                    string[] fileEach = file.Split(';');
+                    string filePicked = fileEach[0];
+                    string fileValues = fileEach[1];
+                    if (!string.IsNullOrEmpty(fileValues))
+                    {
+                        foreach (string value in fileValues.Split(','))
+                        {
+                            TakeAway(int.Parse(value));
+                        }
+                    }
+                    picked = int.Parse(filePicked);
+                }
+                else
+                {
+                    picked = NON_PICKED;
+                }
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                this.x = x;
+                this.y = y;
+            }
         }
 
         public int[][] Move(int[] checks, int checkIndex)
@@ -186,6 +213,27 @@ public static class Konane
         public void TakeIn(int x, int y)
         {
             TakeIn(checkers[y][x].id);
+        }
+
+        public string ToFile()
+        {
+            int[] fileNums = new int[points.Length];
+            int fileSize = 0;
+            for (int i = MAP_OFFSET; i < points.Length; ++i)
+            {
+                ICheckable checker = checkedMaps[points[i].y][points[i].x];
+                if (checker.zZ)
+                {
+                    fileNums[fileSize++] = checker.id;
+                }
+            }
+            if (fileSize != 0)
+            {
+                object[] fileVals = new object[fileSize];
+                fileNums.CopyTo(fileVals, 0);
+                return string.Concat(picked, ";", string.Join(",", fileVals));
+            }
+            return string.Concat(picked, ";");
         }
 
         protected int[] CheckIn(int xMap, int yMap, int[] cache)

@@ -16,10 +16,12 @@ public class Game : ScriptableObject, System.IDisposable
     public int[] dimensions = null;
 
     private bool changed = false;
+    private string dataHash = null;
     private Dictionary<int, int[][]> database = null;
     private Konane.BoardGame gamePlay = null;
     private int gameRound = 0;
     private int gameSubRound = 0;
+    private int gameVer = 0;
     private int id = 0;
     private int index = 0;
 
@@ -36,6 +38,23 @@ public class Game : ScriptableObject, System.IDisposable
     public static bool IsPicked(int value)
     {
         return (value & 4) != 0;
+    }
+
+    public static void RemoveSavedGame(string hashKey)
+    {
+        int size = PlayerPrefs.GetInt(hashKey, 0);
+        for (int i = 0; i < size; ++i)
+        {
+            PlayerPrefs.DeleteKey(hashKey + i);
+        }
+        PlayerPrefs.DeleteKey(hashKey);
+        PlayerPrefs.Save();
+    }
+
+    public static void RemoveSavedGames()
+    {
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
     }
 
     public void A()
@@ -64,7 +83,7 @@ public class Game : ScriptableObject, System.IDisposable
                             gamePlay.CancelPickedTarget();
                             gameSubRound = 0;
                         }
-                        else if (TryGetData(picked, out int[][] data))
+                        else if (TryGetMove(picked, out int[][] data))
                         {
                             for (int i = 0; i < data[index].Length; ++i)
                             {
@@ -226,13 +245,59 @@ public class Game : ScriptableObject, System.IDisposable
 
     public void Init()
     {
+        Init(string.Empty);
+    }
+
+    public void Init(string hash)
+    {
         int x = dimensions[0];
         int y = dimensions[1];
+        dataHash = hash;
         database = new Dictionary<int, int[][]>(x * y);
-        gamePlay = Create();
-        gamePlay.Init(x, y);
-        gameRound = 0;
-        gameSubRound = 0;
+        if (PlayerPrefs.HasKey(hash))
+        {
+            gamePlay = Create();
+            gamePlay.Init(x, y, PlayerPrefs.GetString(hash + 0, null));
+            gameRound = PlayerPrefs.GetInt(hash + 1, 0);
+            gameSubRound = PlayerPrefs.GetInt(hash + 2, 0);
+            gameVer = PlayerPrefs.GetInt(hash + 3, 0);
+        }
+        else
+        {
+            gamePlay = Create();
+            gamePlay.Init(x, y);
+            gameRound = 0;
+            gameSubRound = 0;
+            gameVer = 1;
+        }
+    }
+
+    public void Save()
+    {
+        const int size = 4;
+        PlayerPrefs.SetInt(dataHash, size);
+        PlayerPrefs.SetString(dataHash + 0, gamePlay.ToFile());
+        PlayerPrefs.SetInt(dataHash + 1, gameRound);
+        PlayerPrefs.SetInt(dataHash + 2, gameSubRound);
+        PlayerPrefs.SetInt(dataHash + 3, gameVer);
+        PlayerPrefs.Save();
+    }
+
+    public void Select(int id, int index)
+    {
+        this.id = id;
+        this.index = index;
+    }
+
+    public bool TryGetMove(int id, out int[][] data)
+    {
+        return database.TryGetValue(id, out data) && data.Length != 0;
+    }
+
+    public bool TryGetPickedID(out int id)
+    {
+        id = gamePlay.picked;
+        return id != Konane.BoardGame.NON_PICKED;
     }
 
     public bool TryRefresh(out int[] tips)
@@ -274,23 +339,6 @@ public class Game : ScriptableObject, System.IDisposable
         }
         tips = null;
         return false;
-    }
-
-    public void Select(int id, int index)
-    {
-        this.id = id;
-        this.index = index;
-    }
-
-    public bool TryGetData(int id, out int[][] data)
-    {
-        return database.TryGetValue(id, out data) && data.Length != 0;
-    }
-
-    public bool TryGetPickedID(out int id)
-    {
-        id = gamePlay.picked;
-        return id != Konane.BoardGame.NON_PICKED;
     }
 
     private void OnDestroy()

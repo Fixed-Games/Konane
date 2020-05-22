@@ -83,7 +83,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
 
     private void OnBoardSelect(int id, int index)
     {
-        if (game.TryGetData(id, out int[][] data))
+        if (game.TryGetMove(id, out int[][] data))
         {
             selected = index < data.Length ? index : 0;
             for (int i = 0; i < data[selected].Length; ++i)
@@ -191,7 +191,6 @@ public class UIBoardGame : MonoBehaviour, ITriggable
     private void Start()
     {
         game = GameManager.StartGame();
-        game.Init();
         game.interactable = true;
         gameRatioFitter.aspectRatio = (float)game.x / game.y;
         gameRatioFitter.enabled = true;
