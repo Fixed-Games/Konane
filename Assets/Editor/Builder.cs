@@ -7,15 +7,14 @@ namespace TrainingProject
 {
     public static class Builder
     {
-        public static string Root => Path.GetDirectoryName(Application.dataPath);
-        public static string RootSeparator => Path.DirectorySeparatorChar.ToString();
+        public static string Separator => Path.DirectorySeparatorChar.ToString();
 
         [MenuItem("Tools/Build/All")]
         public static void BuildAll()
         {
-            string fileName1 = string.Join(RootSeparator, "Bin", "All", "konane.apk");
-            string fileName2 = string.Join(RootSeparator, "Bin", "All", "konane.exe");
-            if (EditorUtility.DisplayDialog("Build All", Path.Combine(Root, fileName1) + '\n' + Path.Combine(Root, fileName2), "OK", "Cancel"))
+            string fileName1 = string.Join(Separator, "Bin", "All", "konane.apk");
+            string fileName2 = string.Join(Separator, "Bin", "All", "konane.exe");
+            if (EditorUtility.DisplayDialog("Build All", fileName1 + '\n' + fileName2, "OK", "Cancel"))
             {
                 Build(fileName1, BuildTarget.Android);
                 Build(fileName2, BuildTarget.StandaloneWindows64);
@@ -25,8 +24,8 @@ namespace TrainingProject
         [MenuItem("Tools/Build/Android", false, 0)]
         public static void BuildAndroid()
         {
-            string fileName = string.Join(RootSeparator, "Bin", "Android", "konane.apk");
-            if (EditorUtility.DisplayDialog("Build Android", Path.Combine(Root, fileName), "OK", "Cancel"))
+            string fileName = string.Join(Separator, "Bin", "Android", "konane.apk");
+            if (EditorUtility.DisplayDialog("Build Android", fileName, "OK", "Cancel"))
             {
                 Build(fileName, BuildTarget.Android);
             }
@@ -35,8 +34,8 @@ namespace TrainingProject
         [MenuItem("Tools/Build/Standalone (Win64)", false, 0)]
         public static void BuildStandaloneWindows64()
         {
-            string fileName = string.Join(RootSeparator, "Bin", "Win64", "konane.exe");
-            if (EditorUtility.DisplayDialog("Build Standalone (Win64)", Path.Combine(Root, fileName), "OK", "Cancel"))
+            string fileName = string.Join(Separator, "Bin", "Win64", "konane.exe");
+            if (EditorUtility.DisplayDialog("Build Standalone (Win64)", fileName, "OK", "Cancel"))
             {
                 Build(fileName, BuildTarget.StandaloneWindows64);
             }
@@ -61,7 +60,7 @@ namespace TrainingProject
             }
             if (dir == null)
             {
-                dir = string.Join(RootSeparator, "Bin", "Release");
+                dir = string.Join(Separator, "Bin", "Release");
             }
             if (version != null)
             {

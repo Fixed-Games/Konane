@@ -15,9 +15,9 @@ public class Game : ScriptableObject, System.IDisposable
     public int[] customs = null;
     public int[] dimensions = null;
 
-    private bool changed = false;
-    private string dataHash = null;
     private Dictionary<int, int[][]> database = null;
+    private bool dataChanged = false;
+    private string dataHash = null;
     private Konane.BoardGame gamePlay = null;
     private int gameRound = 0;
     private int gameSubRound = 0;
@@ -30,6 +30,28 @@ public class Game : ScriptableObject, System.IDisposable
         return (value & 1) != 0;
     }
 
+    public static void Delete(string hash)
+    {
+        int size = PlayerPrefs.GetInt(hash, 0);
+        for (int i = 0; i < size; ++i)
+        {
+            PlayerPrefs.DeleteKey(hash + i);
+        }
+        PlayerPrefs.DeleteKey(hash);
+        PlayerPrefs.Save();
+    }
+
+    public static void DeleteAll()
+    {
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+    }
+
+    public static bool Exists(string hash)
+    {
+        return PlayerPrefs.HasKey(hash);
+    }
+
     public static bool IsActived(int value)
     {
         return (value & 2) != 0;
@@ -40,32 +62,17 @@ public class Game : ScriptableObject, System.IDisposable
         return (value & 4) != 0;
     }
 
-    public static void RemoveSavedGame(string hashKey)
-    {
-        int size = PlayerPrefs.GetInt(hashKey, 0);
-        for (int i = 0; i < size; ++i)
-        {
-            PlayerPrefs.DeleteKey(hashKey + i);
-        }
-        PlayerPrefs.DeleteKey(hashKey);
-        PlayerPrefs.Save();
-    }
-
-    public static void RemoveSavedGames()
-    {
-        PlayerPrefs.DeleteAll();
-        PlayerPrefs.Save();
-    }
-
     public void A()
     {
         switch (gameRound)
         {
             case 0:
             case 1:
-                changed = true;
+                dataChanged = true;
                 gamePlay.TakeAway(id);
                 gameRound++;
+                gameSubRound = 0;
+                Save();
                 break;
             default:
                 switch (gameSubRound)
@@ -89,7 +96,6 @@ public class Game : ScriptableObject, System.IDisposable
                             {
                                 if (data[index][i] == id)
                                 {
-                                    changed = true;
                                     database[id] = gamePlay.Move(data[index], i);
                                     gameSubRound = 2;
                                     break;
@@ -120,13 +126,20 @@ public class Game : ScriptableObject, System.IDisposable
                         gameSubRound = 0;
                         break;
                     case 2:
+                        dataChanged = true;
                         gamePlay.CancelPickedTarget();
                         gameRound++;
                         gameSubRound = 0;
+                        Save();
                         break;
                 }
                 break;
         }
+    }
+
+    public void Clear()
+    {
+        Delete(dataHash);
     }
 
     public Konane.BoardGame Create()
@@ -145,8 +158,9 @@ public class Game : ScriptableObject, System.IDisposable
 
     public int GetCheckedValue(int id)
     {
-        int value = 0;
-        if (gamePlay.GetChecker(id).zZ)
+        var checker = gamePlay.GetChecker(id);
+        var value = 0;
+        if (checker.zZ)
         {
             switch (gameRound)
             {
@@ -189,7 +203,6 @@ public class Game : ScriptableObject, System.IDisposable
             switch (gameRound)
             {
                 case 0:
-                case 1:
                     if (gamePlay.GetColor(id) == gameRound)
                     {
                         if (customized)
@@ -201,6 +214,22 @@ public class Game : ScriptableObject, System.IDisposable
                                     value = 2;
                                     break;
                                 }
+                            }
+                        }
+                        else
+                        {
+                            value = 2;
+                        }
+                    }
+                    break;
+                case 1:
+                    if (gamePlay.GetColor(id) == gameRound)
+                    {
+                        if (customized)
+                        {
+                            if (checker.isBack || checker.isForward || checker.isLeft || checker.isRight)
+                            {
+                                value = 2;
                             }
                         }
                         else
@@ -245,16 +274,17 @@ public class Game : ScriptableObject, System.IDisposable
 
     public void Init()
     {
-        Init(string.Empty);
+        Init(string.Empty, true);
     }
 
-    public void Init(string hash)
+    public void Init(string hash, bool hashReset)
     {
         int x = dimensions[0];
         int y = dimensions[1];
-        dataHash = hash;
         database = new Dictionary<int, int[][]>(x * y);
-        if (PlayerPrefs.HasKey(hash))
+        dataChanged = true;
+        dataHash = hash;
+        if (!hashReset && PlayerPrefs.HasKey(hash))
         {
             gamePlay = Create();
             gamePlay.Init(x, y, PlayerPrefs.GetString(hash + 0, null));
@@ -274,6 +304,10 @@ public class Game : ScriptableObject, System.IDisposable
 
     public void Save()
     {
+        if (string.IsNullOrEmpty(dataHash))
+        {
+            return;
+        }
         const int size = 4;
         PlayerPrefs.SetInt(dataHash, size);
         PlayerPrefs.SetString(dataHash + 0, gamePlay.ToFile());
@@ -300,13 +334,13 @@ public class Game : ScriptableObject, System.IDisposable
         return id != Konane.BoardGame.NON_PICKED;
     }
 
-    public bool TryRefresh(out int[] tips)
+    public bool TryRefresh(out int[] dataTips)
     {
         if (gameRound != 0 && gameRound != 1)
         {
-            if (changed)
+            if (dataChanged)
             {
-                changed = false;
+                dataChanged = false;
                 for (int i = 0; i < gamePlay.y; ++i)
                 {
                     for (int j = 0; j < gamePlay.x; ++j)
@@ -334,10 +368,10 @@ public class Game : ScriptableObject, System.IDisposable
                     }
                 }
             }
-            tips = dataList.ToArray();
+            dataTips = dataList.ToArray();
             return true;
         }
-        tips = null;
+        dataTips = null;
         return false;
     }
 

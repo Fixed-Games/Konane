@@ -2,6 +2,18 @@
 
 public class KonaneClassic : Konane.BoardGame
 {
+    protected override bool IsCustomStarter(int x, int y)
+    {
+        if (x == y)
+        {
+            if (x == 0 || x == this.x - 1 || x == this.x >> 1 || x == (this.x - 1) >> 1)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected override int[][] ToJumpBack(int xMap, int yMap, int[] cache)
     {
         return JumpBack(xMap, yMap, cache);

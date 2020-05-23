@@ -8,6 +8,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
     public const float T = 1f / FREQUENCY;
 
     [SerializeField] private Button board = null;
+    [SerializeField] private Button boardExit = null;
     [SerializeField] private Button boardSelect = null;
     [SerializeField] private CanvasGroup boardView = null;
     [SerializeField] private AspectRatioFitter gameRatioFitter = null;
@@ -26,6 +27,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
     private void Awake()
     {
         board.onClick.AddListener(OnBoard);
+        boardExit.onClick.AddListener(OnBoardExit);
         boardSelect.onClick.AddListener(OnBoardSelect);
         boardView.blocksRaycasts = false;
     }
@@ -52,6 +54,11 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         uiDeltaTime = T * 0.8f;
     }
 
+    private void OnBoardExit()
+    {
+        GameManager.Home();
+    }
+
     private void OnBoardSelect()
     {
         if (game.TryGetPickedID(out int id))
@@ -73,10 +80,6 @@ public class UIBoardGame : MonoBehaviour, ITriggable
                         uiCheckers[tips[i]].SetInfoWarning();
                     }
                 }
-                else
-                {
-                    GameManager.Quit();
-                }
             }
         }
     }
@@ -86,7 +89,13 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         if (game.TryGetMove(id, out int[][] data))
         {
             selected = index < data.Length ? index : 0;
-            for (int i = 0; i < data[selected].Length; ++i)
+            for (int i = 2; i < data[selected].Length; ++i)
+            {
+                int point = data[selected][i];
+                uiCheckers[point].SetInfo(Color.white);
+                uiCheckers[point].Repaint();
+            }
+            for (int i = 0; i < 2; ++i)
             {
                 int point = data[selected][i];
                 uiCheckers[point].SetInfo(Color.yellow);
@@ -175,6 +184,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
                 boardView.blocksRaycasts = false;
                 boardView.interactable = false;
                 game.interactable = false;
+                game.Clear();
                 for (int i = Game.OFFSET; i < uiCheckers.Length; ++i)
                 {
                     int value = game.GetCheckedValue(i);
