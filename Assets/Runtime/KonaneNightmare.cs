@@ -1,11 +1,6 @@
 ﻿
 public class KonaneNightmare : Konane.BoardGame
 {
-    protected override bool IsCustomStarter(int x, int y)
-    {
-        return true;
-    }
-
     protected override int[][] ToJumpBack(int xMap, int yMap, int[] cache)
     {
         if (IsValid(xMap, yMap, cache, out ICheckable checker) && checker.isBack)

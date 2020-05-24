@@ -93,20 +93,17 @@ public class UIBoardGame : MonoBehaviour, ITriggable
             {
                 int point = data[selected][i];
                 uiCheckers[point].SetInfo(Color.white);
-                uiCheckers[point].Repaint();
             }
             for (int i = 0; i < 2; ++i)
             {
                 int point = data[selected][i];
                 uiCheckers[point].SetInfo(Color.yellow);
-                uiCheckers[point].Repaint();
             }
         }
         else
         {
             game.B();
             uiCheckers[id].SetInfoError();
-            uiDeltaTime = T;
         }
     }
 
@@ -128,7 +125,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
                 {
                     if (Game.IsPicked(value))
                     {
-                        uiCheckers[i].Check();
+                        uiCheckers[i].Check(Color.yellow);
                     }
                     else
                     {
@@ -251,7 +248,6 @@ public class UIBoardGame : MonoBehaviour, ITriggable
         if (uiDeltaTime > T)
         {
             uiDeltaTime = 0f;
-            OnGame();
             if (game.interactable)
             {
                 if (boardView.blocksRaycasts == false)
@@ -264,6 +260,7 @@ public class UIBoardGame : MonoBehaviour, ITriggable
                     }
                 }
             }
+            OnGame();
         }
         else
         {

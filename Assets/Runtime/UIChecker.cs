@@ -15,8 +15,13 @@ public class UIChecker : MonoBehaviour
 
     public void Check()
     {
+        Check(Color.white);
+    }
+
+    public void Check(Color color)
+    {
         button.interactable = true;
-        buttonFrame.color = Color.white;
+        buttonFrame.color = color;
         icon.enabled = true;
     }
 

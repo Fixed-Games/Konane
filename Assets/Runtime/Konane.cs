@@ -133,16 +133,6 @@ public static class Konane
             }
         }
 
-        public bool IsTheStarter(int id)
-        {
-            return IsCustomStarter(points[id].x - MAP_OFFSET, points[id].y - MAP_OFFSET);
-        }
-
-        public bool IsTheStarter(int x, int y)
-        {
-            return IsCustomStarter(x, y);
-        }
-
         public int[][] Move(int[] checks, int checkIndex)
         {
             int id = checks[0];
@@ -295,7 +285,6 @@ public static class Konane
             TakeIn(id);
         }
 
-        protected abstract bool IsCustomStarter(int x, int y);
         protected abstract int[][] ToJumpBack(int xMap, int yMap, int[] cache);
         protected abstract int[][] ToJumpForward(int xMap, int yMap, int[] cache);
         protected abstract int[][] ToJumpLeft(int xMap, int yMap, int[] cache);
