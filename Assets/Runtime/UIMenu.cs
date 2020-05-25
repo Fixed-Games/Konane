@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIMenu : MonoBehaviour, ITriggable
 {
@@ -9,6 +10,8 @@ public class UIMenu : MonoBehaviour, ITriggable
         public bool hashReset;
     }
 
+    [SerializeField] private Text appName = null;
+    [SerializeField] private Text appVer = null;
     [SerializeField] private UIMenuItem[] gameInits = null;
     [SerializeField] private UIMenuItem[] games = null;
 
@@ -16,6 +19,8 @@ public class UIMenu : MonoBehaviour, ITriggable
 
     private void Awake()
     {
+        appName.text = "Kōnane";
+        appVer.text = Application.version;
         string[] hashKeys = new string[] {
             "Classic 6x6",
             "Classic 8x8",
